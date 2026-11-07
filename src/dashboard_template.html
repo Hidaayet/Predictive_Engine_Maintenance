@@ -1,0 +1,152 @@
+<title>Engine Pull Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: one control strip on top, three policy readouts, two charts side by side, then model evidence. Instrument-panel feel on cool paper. */
+:root{
+  --bg:#edf0f3; --panel:#f8fafb; --ink:#13202c; --muted:#56677a; --rule:#cdd5dd;
+  --rul:#0a6c96; --fixed:#b86a00; --rtf:#6b7886; --good:#1d7a46; --bad:#b4332a; --band:rgba(10,108,150,.14);
+  --display:"IBM Plex Sans Condensed","Arial Narrow",sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --panel:#141f2a; --ink:#e4ebf1; --muted:#93a3b3; --rule:#2a3846;
+  --rul:#4cb8e6; --fixed:#e8a047; --rtf:#8795a4; --good:#59c98a; --bad:#ef7f74; --band:rgba(76,184,230,.18); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --panel:#141f2a; --ink:#e4ebf1; --muted:#93a3b3; --rule:#2a3846;
+  --rul:#4cb8e6; --fixed:#e8a047; --rtf:#8795a4; --good:#59c98a; --bad:#ef7f74; --band:rgba(76,184,230,.18); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font:600 clamp(26px,4vw,36px)/1.1 var(--display);margin:0;letter-spacing:.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;max-width:68ch}
+.tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:18px}
+.controls{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr);gap:20px;align-items:end}
+label{display:block;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+select{width:100%;font:500 15px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:4px;padding:9px 10px}
+.rrow{display:flex;align-items:center;gap:14px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--rul)}
+.rval{font:500 22px var(--mono);min-width:5ch;text-align:right}
+.verdict{margin:0;font:500 clamp(17px,2.4vw,21px)/1.35 var(--display);text-wrap:balance}
+.verdict b{font-weight:600}
+.pols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.pol{padding:16px;border:1px solid var(--rule);border-top:4px solid var(--c);border-radius:6px;background:var(--panel);display:flex;flex-direction:column;gap:12px}
+.pol.best{outline:2px solid var(--c);outline-offset:-1px}
+.pol h2{margin:0;font:600 15px var(--display);letter-spacing:.04em;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
+.pol .win{font:500 10px var(--mono);letter-spacing:.08em;color:var(--c)}
+.big{font:500 34px/1 var(--mono);font-variant-numeric:tabular-nums}
+.big small{font-size:12px;color:var(--muted);margin-left:6px}
+dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:13px}
+dt{color:var(--muted)} dd{margin:0;font:500 13px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.charts h3,.ev h3{margin:0 0 4px;font:600 14px var(--display);letter-spacing:.04em;text-transform:uppercase}
+.charts p{margin:0 0 8px;color:var(--muted);font-size:13px}
+svg{width:100%;height:auto;display:block}
+svg text{font:11px var(--mono);fill:var(--muted)}
+.ev{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums;font-family:var(--mono)}
+td.hi{color:var(--rul);font-weight:500} td.bad{color:var(--bad);font-weight:500}
+.note{font-size:12.5px;color:var(--muted);max-width:90ch}
+:focus-visible{outline:2px solid var(--rul);outline-offset:2px}
+@media (max-width:760px){.controls,.pols,.charts,.ev{grid-template-columns:minmax(0,1fr)}}
+</style>
+<div class="wrap">
+  <header>
+    <div class="tag">NASA C-MAPSS &middot; simulated turbofans &middot; hypothetical fleet</div>
+    <h1>Engine Pull Simulator</h1>
+    <p class="sub">When is it cheaper to pull an engine on a sensor-based RUL prediction than on a fixed schedule? Choose where the model was trained and how much costlier an unplanned failure is than planned maintenance.</p>
+  </header>
+
+  <section class="panel controls" aria-label="Controls">
+    <div><label for="scen">Scenario</label><select id="scen"></select></div>
+    <div><label for="r">Failure cost &divide; planned cost (r)</label>
+      <div class="rrow"><input id="r" type="range" min="0" max="98" step="1" value="18"><span class="rval" id="rv">10</span></div></div>
+  </section>
+
+  <p class="verdict" id="verdict" aria-live="polite"></p>
+
+  <section class="pols" aria-label="Policy readouts" id="pols"></section>
+
+  <section class="charts">
+    <div class="panel"><h3>Cost per 100 operating cycles</h3><p>Log scale, units of one planned maintenance. Lower is better.</p><svg id="c1" viewBox="0 0 520 300" role="img" aria-label="Cost per 100 cycles versus cost ratio for each policy"></svg></div>
+    <div class="panel"><h3>RUL policy vs. fixed interval</h3><p>Percent change in cost. Below zero, the RUL policy is cheaper. Band: 95% bootstrap over engines.</p><svg id="c2" viewBox="0 0 520 300" role="img" aria-label="Relative cost of RUL policy versus fixed interval across cost ratio"></svg></div>
+  </section>
+
+  <section class="ev">
+    <div class="panel tbl"><h3>In-domain accuracy</h3><p class="note" style="margin:0 0 8px">Official test engines, last cycle, RMSE in cycles (lower is better).</p>
+      <table id="t1"></table></div>
+    <div class="panel tbl"><h3>Train on FD001, test elsewhere</h3><p class="note" style="margin:0 0 8px">RMSE in cycles on the target dataset's official test engines.</p>
+      <table id="t2"></table></div>
+  </section>
+
+  <p class="note">Costs are illustrative assumptions and the data are simulated. Each engine is one run-to-failure life; a policy may pull it earlier (cost 1) or it fails (cost r). Cost per cycle = total cost &divide; cycles flown. Fixed interval and RUL thresholds are re-tuned for every r on other engines only. Decision support only; nothing here authorizes maintenance.</p>
+</div>
+<script>
+const D=__DATA__;
+const $=id=>document.getElementById(id);
+const NAMES={rul:"RUL threshold",fixed:"Fixed interval",rtf:"Run-to-failure"};
+const COL={rul:"var(--rul)",fixed:"var(--fixed)",rtf:"var(--rtf)"};
+const sel=$("scen");
+Object.keys(D.scenarios).forEach(k=>{const o=document.createElement("option");o.value=o.textContent=k;sel.appendChild(o)});
+sel.value="FD004 in-domain";
+const fmt=(v,d=2)=>v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+function state(){const s=D.scenarios[sel.value];const i=+$("r").value;return{s,i,r:D.r[i]}}
+function render(){
+  const {s,i,r}=state(); $("rv").textContent=r%1?r.toFixed(1):r;
+  const order=["rtf","fixed","rul"]; const costs=order.map(p=>s[p].cpc[i]);
+  const best=order[costs.indexOf(Math.min(...costs))];
+  $("pols").innerHTML=order.map(p=>`<article class="pol${p===best?" best":""}" style="--c:${COL[p]}"><h2><span>${NAMES[p]}</span>${p===best?'<span class="win">CHEAPEST</span>':""}</h2>
+    <div class="big">${fmt(s[p].cpc[i])}<small>per 100 cycles</small></div>
+    <dl><dt>Unplanned failures</dt><dd>${fmt(s[p].fail[i],1)}%</dd><dt>Premature pulls</dt><dd>${fmt(s[p].prem[i],1)}%</dd><dt>Mean cycles flown</dt><dd>${fmt(s[p].cyc[i],0)}</dd></dl></article>`).join("");
+  const rel=s.rel[i], tie=Math.abs(rel)<0.5;
+  const rtfSame=Math.abs(s.rul.cpc[i]-s.rtf.cpc[i])<1e-9;
+  let v;
+  if(r<=1) v=`At r = 1 a failure costs the same as a planned service, so no policy has a reason to pull early.`;
+  else if(rtfSame) v=`At r = ${r}, this model never triggers a pull, so it behaves exactly like run-to-failure (${fmt(s.rtf.fail[i],0)}% unplanned failures).`;
+  else if(tie) v=`At r = ${r}, the RUL threshold and the tuned fixed interval cost about the same.`;
+  else v=`At r = ${r}, the RUL threshold costs <b style="color:var(${rel<0?"--good":"--bad"})">${fmt(Math.abs(rel),0)}% ${rel<0?"less":"more"}</b> than the tuned fixed interval, with ${fmt(s.rul.fail[i],1)}% unplanned failures versus ${fmt(s.fixed.fail[i],1)}%.`;
+  $("verdict").innerHTML=v; chart1(s,i); chart2(s,i);
+}
+const W=520,H=300,M={l:46,r:14,t:12,b:36};
+function ax(svg,xs,ys,xt,yt,xl,yl){
+  let o=`<rect x="0" y="0" width="${W}" height="${H}" fill="none"/>`;
+  yt.forEach(t=>{const y=ys(t.v);o+=`<line x1="${M.l}" x2="${W-M.r}" y1="${y}" y2="${y}" stroke="var(--rule)" stroke-width="1"/><text x="${M.l-6}" y="${y+4}" text-anchor="end">${t.l}</text>`});
+  xt.forEach(t=>{const x=xs(t);o+=`<line x1="${x}" x2="${x}" y1="${M.t}" y2="${H-M.b}" stroke="var(--rule)" stroke-width=".5" stroke-dasharray="2 3"/><text x="${x}" y="${H-M.b+15}" text-anchor="middle">${t}</text>`});
+  o+=`<text x="${(M.l+W-M.r)/2}" y="${H-4}" text-anchor="middle">${xl}</text>`;
+  return o;
+}
+function chart1(s,i){
+  const rs=D.r, all=["rtf","fixed","rul"].flatMap(p=>s[p].cpc), lo=Math.log10(Math.min(...all)*.8), hi=Math.log10(Math.max(...all)*1.25);
+  const xs=r=>M.l+(r-1)/49*(W-M.l-M.r), ys=v=>H-M.b-(Math.log10(v)-lo)/(hi-lo)*(H-M.t-M.b);
+  const yt=[0.1,0.2,0.5,1,2,5,10,20,50,100].filter(v=>Math.log10(v)>=lo&&Math.log10(v)<=hi).map(v=>({v,l:String(v)}));
+  let o=ax(null,xs,ys,[1,10,20,30,40,50],yt,"cost ratio r","");
+  ["rtf","fixed","rul"].forEach(p=>{o+=`<polyline fill="none" stroke="${COL[p]}" stroke-width="2.2" stroke-linejoin="round" points="${rs.map((r,k)=>xs(r)+","+ys(s[p].cpc[k])).join(" ")}"/>`});
+  const x=xs(rs[i]);o+=`<line x1="${x}" x2="${x}" y1="${M.t}" y2="${H-M.b}" stroke="var(--ink)" stroke-width="1"/>`;
+  ["rtf","fixed","rul"].forEach(p=>{o+=`<circle cx="${x}" cy="${ys(s[p].cpc[i])}" r="4" fill="${COL[p]}" stroke="var(--panel)" stroke-width="1.5"/>`});
+  $("c1").innerHTML=o;
+}
+function chart2(s,i){
+  const rs=D.r, cap=150, fl=-80, cl=v=>Math.max(fl,Math.min(cap,v));
+  const xs=r=>M.l+(r-1)/49*(W-M.l-M.r), ys=v=>H-M.b-(cl(v)-fl)/(cap-fl)*(H-M.t-M.b);
+  const yt=[-75,-50,-25,0,25,50,100,150].map(v=>({v,l:(v>0?"+":"")+v+"%"}));
+  let o=ax(null,xs,ys,[1,10,20,30,40,50],yt,"cost ratio r","");
+  o+=`<line x1="${M.l}" x2="${W-M.r}" y1="${ys(0)}" y2="${ys(0)}" stroke="var(--ink)" stroke-width="1.2"/>`;
+  const up=rs.map((r,k)=>xs(r)+","+ys(s.hi[k])), dn=rs.map((r,k)=>xs(r)+","+ys(s.lo[k])).reverse();
+  o+=`<polygon points="${up.concat(dn).join(" ")}" fill="var(--band)" stroke="none"/>`;
+  o+=`<polyline fill="none" stroke="var(--rul)" stroke-width="2.2" stroke-linejoin="round" points="${rs.map((r,k)=>xs(r)+","+ys(s.rel[k])).join(" ")}"/>`;
+  const x=xs(rs[i]);o+=`<line x1="${x}" x2="${x}" y1="${M.t}" y2="${H-M.b}" stroke="var(--ink)" stroke-width="1"/><circle cx="${x}" cy="${ys(s.rel[i])}" r="4" fill="var(--rul)" stroke="var(--panel)" stroke-width="1.5"/>`;
+  const b=D.breakeven[sel.value];
+  if(b&&b.point_loss_from){const bx=xs(b.point_loss_from);o+=`<line x1="${bx}" x2="${bx}" y1="${M.t}" y2="${H-M.b}" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="4 3"/><text x="${bx+5}" y="${M.t+12}" fill="var(--bad)" style="fill:var(--bad)">RUL loses from r=${b.point_loss_from}</text>`}
+  if(s.rel.some(v=>v>cap))o+=`<text x="${W-M.r}" y="${M.t+12}" text-anchor="end">line leaves the chart above +${cap}%</text>`;
+  $("c2").innerHTML=o;
+}
+function tables(){
+  $("t1").innerHTML=`<tr><th>Dataset</th><th>Age baseline</th><th>Ridge</th><th>XGBoost</th><th>NASA score</th></tr>`+D.models.map(m=>`<tr><td>${m.ds}</td><td>${m.naive_age.toFixed(1)}</td><td>${m.ridge.toFixed(1)}</td><td class="hi">${m.xgboost.toFixed(1)}</td><td>${m.score.toLocaleString("en-US")}</td></tr>`).join("");
+  $("t2").innerHTML=`<tr><th>Target</th><th>Features</th><th>In-domain</th><th>From FD001</th><th>Change</th></tr>`+D.cross.map(c=>`<tr><td>${c.t}</td><td>${c.v==="raw"?"raw":"normalized"}</td><td>${c.i.toFixed(1)}</td><td>${c.c.toFixed(1)}</td><td class="${c.p>100?"bad":c.p>30?"":"hi"}">+${c.p}%</td></tr>`).join("");
+}
+sel.addEventListener("change",render);$("r").addEventListener("input",render);tables();render();
+</script>

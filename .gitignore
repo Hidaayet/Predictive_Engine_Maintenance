@@ -1,0 +1,6 @@
+.pgdata/
+data/raw/
+__pycache__/
+*.pyc
+nohup.out
+.venv/
