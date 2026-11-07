@@ -1,4 +1,4 @@
-# Predictive Engine Maintenance: When Should We Pull an Engine?
+﻿# Predictive Engine Maintenance: When Should We Pull an Engine?
 
 Can sensor-based Remaining Useful Life (RUL) prediction beat fixed-interval maintenance on cost, and how robust is that when operating conditions change? Hypothetical airline, NASA C-MAPSS simulated turbofan data. Costs are illustrative assumptions; nothing here is a claim about real savings, and the model is decision support only.
 
@@ -7,10 +7,10 @@ Can sensor-based Remaining Useful Life (RUL) prediction beat fixed-interval main
 ## Headline results
 | | |
 |---|---|
-| Best in-domain model | XGBoost, RUL capped at 125, per-condition normalised + rolling features. Test RMSE 15.8 / 26.7 / 27.1 cycles on FD001 / FD002 / FD004 (naive: 40.2 / 41.6 / 64.0) |
-| FD001 → FD002 / FD004 | RMSE 44.8 / 50.3 raw (+68% / +86%); 29.4 / 35.6 with per-condition normalisation (+10% / +31%) |
-| Where it fails | late-life errors are small (3–6 cycles RMSE in the last 10) but optimistic (64–79% overestimates); the 125 cap hurts long-life engines; FD001→FD004 has +18 cycle bias near failure |
-| Breakeven | RUL policy beats a tuned fixed interval from r ≈ 1.1–1.25 (35–43% cheaper at r = 10) but only if the threshold is calibrated on the target fleet; threshold tuned on FD001 and moved to FD002 / FD004 loses to fixed above r ≈ 5.7 / 2.2 |
+| Best in-domain model | XGBoost, RUL capped at 125, per-condition normalised + rolling features. Test RMSE 15.3 / 26.6 / 27.1 cycles on FD001 / FD002 / FD004 (naive: 40.2 / 41.6 / 64.0) |
+| FD001 → FD002 / FD004 | RMSE 43.3 / 48.0 raw (+63% / +77%); 29.8 / 35.6 with per-condition normalisation (+12% / +31%) |
+| Where it fails | late-life errors are small (3.5–6 cycles RMSE in the last 10) but optimistic (64–80% overestimates); the 125 cap hurts long-life engines; FD001→FD004 has a +20 cycle bias near failure |
+| Breakeven | RUL policy beats a tuned fixed interval from r ≈ 1.1–1.15 (34–44% cheaper at r = 10) but only if the threshold is calibrated on the target fleet; a threshold tuned on FD001 and moved to FD002 / FD004 loses to fixed above r ≈ 4.6 / 2.1 |
 
 ## Run it
 ```bash
@@ -48,3 +48,4 @@ Needs Python 3.10+ and PostgreSQL 14+ binaries. `scripts/start_postgres.sh` crea
 - N-CMAPSS, real-time integration and certification are out of scope.
 
 Data: NASA Prognostics Data Repository, Turbofan Engine Degradation Simulation (C-MAPSS), fetched from a GitHub mirror.
+
